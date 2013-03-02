@@ -55,6 +55,12 @@ let paper = ref blankPaper
 
 ;;
 
+(* Iloczyn skalarny punktow a i b *)
+let dotProduct a b =
+  let Point(ax, ay, _) = a in
+  let Point(bx, by, _) = b in
+  ax *. bx +. ay *. by
+;;
 
 (*
   Czy linie wyznaczone przez punkty p0,p1 i p2,p3 sie przecinaja? 
@@ -73,6 +79,19 @@ let intersects p0 p1 p2 p3 =
     None
 ;;
 
+(* Rzutowanie ortogonalne punktu a na prosta wyznaczona przez p0, p1 *)
+let orthoProj p0 p1 a =
+  let Point(p0x, p0y, _) = p0 in
+  let Point(p1x, p1y, _) = p1 in
+  let Point(ax, ay, _) = a in
+  let sx = p1x -. p0x in
+  let sy = p1y -. p0y in
+  let s = Point(sx, sy, Flat) in
+  let v = Point(ax -. p0x, ay -. p0y, Flat) in
+  let fact = (dotProduct v s) /. (dotProduct s s) in
+  Point(sx *. fact, sy *. fact, Flat)
+;;
+
 (* Wez kartke papieru 'paper' oraz wspolrzedne odcinka p0, p1 i zwroc nowa,
    zagieta kartke papieru *)
 let foldPaper paper p0 p1 orientation = 
@@ -87,7 +106,8 @@ let foldPaper paper p0 p1 orientation =
       | _ -> Paper(List.rev result)
   in
     let Paper points = paper in
-      foldPaperRec points p0 p1 []
+    let fst, snd = List.hd points, List.hd (List.tl points) in
+      foldPaperRec (points @ [fst] @ [snd]) p0 p1 []
 ;;
 
 let calcNormal p1x p1y p1z p2x p2y p2z p3x p3y p3z =
