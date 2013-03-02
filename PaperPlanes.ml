@@ -17,11 +17,44 @@ let blankPaper =
   ])
 ;;
 
-let dotProduct a b =
-  let Point(ax, ay, _) = a in
-  let Point(bx, by, _) = b in
-  ax *. bx +. ay *. by
+(* Polozenie myszy na ekranie *)
+let mousex = ref 0.0
+let mousey = ref 0.0
+
+(* Wspolrzedne ostatniego klikniecia *)
+let clickx = ref 0.0
+let clicky = ref 0.0
+
+(* try to force refresh every "min_refresh" milliseconds *)
+let min_refresh = 30
+
+(* Wpolrzende ograniczajace okno *)
+let x_min = -1.2 and x_max = 1.2
+and y_min = -1.2 and y_max = 1.2
+and z_min, z_max = -6.0, 60.0
+
+(* Lewy przycisk myszy *)
+let lmousedown = ref false
+
+(* Prawy przysik myszy *)
+(* Przy wcisnietym prawym przycisku można obracać model
+   Po puszczeniu wraca on do widoku edycji z lotu ptaka - zaginanie kartki *)
+let rmousedown = ref false
+
+(* Czy klawisz shift jest nacisniety? *)
+(* Jesli tak to podczas edycji modelu kartka bedzie zaginana do srodka.
+   W przeciwnym przypadku kartka zaginana jest na zewnatrz *)
+let shift_key = ref false
+
+(* Katy obrotu w przypadku nacisniecia prawego przycisku myszy *)
+let angley = ref 0.0
+let anglex = ref 0.0
+
+(* Zacznij z czysta kartka papieru, kwadratem 1x1 *)
+let paper = ref blankPaper
+
 ;;
+
 
 (*
   Czy linie wyznaczone przez punkty p0,p1 i p2,p3 sie przecinaja? 
@@ -43,12 +76,13 @@ let intersects p0 p1 p2 p3 =
 (* Wez kartke papieru 'paper' oraz wspolrzedne odcinka p0, p1 i zwroc nowa,
    zagieta kartke papieru *)
 let foldPaper paper p0 p1 orientation = 
-  let rec foldPaperRec paper p0 p1 result =
-    match paper with
-      | [] -> result
-      | a::t -> result
+  let rec foldPaperRec points p0 p1 result =
+    match points with
+      | [] -> Paper(result)
+      | a::t -> Paper(result)
   in
-    foldPaperRec paper p0 p1 []
+    let Paper points = paper in
+      foldPaperRec points p0 p1 []
 ;;
 
 (* Zwraca liste trojkatow dla danej, pozaginanej kartki papieru *)
@@ -59,74 +93,50 @@ let paperTriangles paper =
       | a::b::c::t -> paperTrianglesRec (b::c::t) ((a, b, c) :: result)
       | _ -> result
   in
-    let Paper p = paper in
-    let fst, snd = List.hd p, List.hd (List.tl p) in
-      paperTrianglesRec (p @ [snd] @ [fst]) []
+    let Paper points = paper in
+    let fst, snd = List.hd points, List.hd (List.tl points) in
+      paperTrianglesRec (points @ [snd] @ [fst]) []
 
 let displayPaper paper =
-  glColor3 0.5 0.5 0.5;
+  
   glBegin GL_TRIANGLES;
   let tri points = 
     let Point(ax, ay, _), Point(bx, by, _), Point(cx, cy, _) = points in
-    glVertex2 ax ay;
-    glVertex2 bx by;
-    glVertex2 cx cy;
+      (* glColor3 0.5 (cx*.0.5+.0.5) (cy*.0.5+.0.5); *)
+      glColor3 0.5 0.5 0.5;
+      glNormal3 ~nx:0.0 ~ny:0.0 ~nz:(1.0);
+      glVertex2 ax ay;
+      glColor3 0.5 0.5 0.5;
+      (* glColor3 0.5 (bx*.0.5+.0.5) (by*.0.5+.0.5); *)
+      glNormal3 ~nx:0.0 ~ny:0.0 ~nz:(1.0);
+      glVertex2 bx by;
+      glColor3 0.5 0.5 0.5;
+      (* glColor3 0.5 (ax*.0.5+.0.5) (ay*.0.5+.0.5); *)
+      glNormal3 ~nx:0.0 ~ny:0.0 ~nz:(1.0);
+      glVertex2 cx cy;
   in
     List.iter tri (paperTriangles paper);
   glEnd()
 ;;
 
-(* Polozenie myszy na ekranie *)
-let mousex = ref 0.0
-let mousey = ref 0.0
-
-(* Wspolrzedne ostatniego klikniecia *)
-let clickx = ref 0.0
-let clicky = ref 0.0
-
-(* try to force refresh every "min_refresh" milliseconds *)
-let min_refresh = 30
-
-(* Wpolrzende ograniczajace okno *)
-let x_min = -1.2 and x_max = 1.2
-and y_min = -1.2 and y_max = 1.2
-and z_min, z_max = -6.0, 60.0 ;;
-
-(* Lewy przycisk myszy *)
-let lmousedown = ref false
-
-(* Prawy przysik myszy *)
-(* Przy wcisnietym prawym przycisku można obracać model
-   Po puszczeniu wraca on do widoku edycji z lotu ptaka - zaginanie kartki *)
-let rmousedown = ref false
-
-(* Czy klawisz shift jest nacisniety? *)
-(* Jesli tak to podczas edycji modelu kartka bedzie zaginana do srodka.
-   W przeciwnym przypadku kartka zaginana jest na zewnatrz *)
-let shift_key = ref false
-
-(* Katy obrotu w przypadku nacisniecia prawego przycisku myszy *)
-let angley = ref 0
-let anglex = ref 0
-
-let paper = ref blankPaper
-
-
-
 let display() =
-  glClear [GL_COLOR_BUFFER_BIT];
+  glClear [GL_COLOR_BUFFER_BIT; GL_DEPTH_BUFFER_BIT];
   glLoadIdentity();
 
-  
+  glColor3 0.5 0.5 0.5;
   glPointSize 5.0;
   if !rmousedown then
   begin
-    glRotate ~angle:(float(- !angley)) ~x:1.0 ~y:0.0 ~z:0.0;
-    glRotate ~angle:(float(- !anglex)) ~x:0.0 ~y:1.0 ~z:0.0;
+    
+    glRotate ~angle:(!anglex) ~x:0.0 ~y:1.0 ~z:0.0;  
+    glRotate ~angle:(-. !angley) ~x:(1.0) ~y:0.0 ~z:0.0;
     displayPaper !paper;
+    
+    glFlush();
   end
   else
   begin
+    
     displayPaper !paper;
     if !lmousedown then
     begin
@@ -153,53 +163,11 @@ let display() =
       glVertex2 !mousex !mousey;
       glEnd();
     end;
-
+    
   end;
   glFlush();
   glutSwapBuffers();
 ;;
-
-(*
-let display() =
-  glClear [GL_COLOR_BUFFER_BIT];
-  glLoadIdentity();
-  glColor3 ~r:0. ~g:1.0 ~b:0.;
-  glBegin GL_LINES;
-    glVertex2 ~x:!xcur ~y:!ycur;
-    glVertex2 ~x:!xold ~y:!yold;
-  glEnd();
-  glutWireCube ~size:!xcur;
-  (*
-  glRotate ~angle:(float(- !angley)) ~x:1.0 ~y:0.0 ~z:0.0;
-  glRotate ~angle:(float(- !anglex)) ~x:0.0 ~y:1.0 ~z:0.0;
-  glColor3 ~r:0. ~g:1.0 ~b:0.;
-  glutWireCube ~size:1.0;
-  *)
-  glFlush();
-  glutSwapBuffers();
-;;
-*)
-
-(*
-(* active mouse motion *)
-let motion ~x ~y =
-  if !b_down then  (* if the left button is down *)
-  begin
-
- (* change the rotation angles according to the last position
-    of the mouse and the new one *)
-    (*
-    anglex := !anglex + (!xold - x);
-    angley := !angley + (!yold - y);
-  *)
-    glutPostRedisplay();
-  end;
-  
-  xcur := float_of_int(x);  (* save mouse position *)
-  ycur := float_of_int(y);
-  
-;;
-*)
 
 (* convert the coordinates of the mouse
    from window coordinates to the local
@@ -212,8 +180,13 @@ let reg_unproject_coords ~x ~y =
 
 (* active mouse motion *)
 let motion ~x ~y =
-  reg_unproject_coords ~x ~y;  
-  
+  reg_unproject_coords ~x ~y;
+  (*
+  printf ("%f" ^^ " %f\n") !clickx !clicky;
+  printf ("%f" ^^ " %f\n") !mousex !mousey;
+  *)
+  anglex := -. (!mousex -. !clickx) *. 6.0;
+  angley := -. (!mousey -. !clicky) *. 6.0;
 ;;
 
 (* passive mouse motion *)
@@ -231,34 +204,28 @@ let mouse ~button ~state ~x ~y =
       let mx, my, _ = gluUnProjectUtil ~x ~y in
         clickx := mx;
         clicky := my;
-  | GLUT_LEFT_BUTTON, GLUT_UP -> lmousedown := false;
-  | GLUT_RIGHT_BUTTON, GLUT_DOWN -> rmousedown := true;
-  | GLUT_RIGHT_BUTTON, GLUT_UP -> rmousedown := false;
+  | GLUT_LEFT_BUTTON, GLUT_UP -> 
+      lmousedown := false;
+      let p0, p1 = Point(!clickx, !clicky, Top), Point(!mousex, !mousey, Top) in
+        paper := foldPaper (!paper) p0 p1 Top;
+  | GLUT_RIGHT_BUTTON, GLUT_DOWN ->
+      rmousedown := true;
+      let mx, my, _ = gluUnProjectUtil ~x ~y in
+        clickx := mx;
+        clicky := my;
+  | GLUT_RIGHT_BUTTON, GLUT_UP -> 
+    rmousedown := false;
+    anglex := 0.0;
+    angley := 0.0;
   | _ -> ()
 ;;
 
-(*
-(* mouse button event *)
-let mouse ~button ~state ~x ~y =
-  match button, state with
-  (* if we press the left button *)
-  | GLUT_LEFT_BUTTON, GLUT_DOWN ->
-      b_down := true;
-      xold := float_of_int(x);  (* save mouse position *)
-      yold := float_of_int(y);
-  (* if we release the left button *)
-  | GLUT_LEFT_BUTTON, GLUT_UP ->
-      b_down := false;
-  | _ -> ()
-;;
-*)
-
+(* Wyjscie klawiszem ESC lub q *)
 let keyboard ~key ~x ~y =
   match key with
   | '\027' (* escape key *)
   | 'q' -> exit 0
   | _ -> ()
-
 ;;
 
 let reshape  ~width:w ~height:h =
@@ -276,32 +243,32 @@ let reshape  ~width:w ~height:h =
   glLoadIdentity();
 ;;
 
-(*
-let reshape ~width:w ~height:h =
-  glViewport 0 0 w h;
-  let aspect = (float w) /. (float h) in
-  glMatrixMode GL_PROJECTION;
-  glLoadIdentity();
-  gluPerspective ~fovy:60.0 ~aspect ~zNear:0.5 ~zFar:80.0;
-  glMatrixMode GL_MODELVIEW;
-;;
-*)
-
 let idle () =
   glutPostRedisplay();
 ;;
 
 let gl_init() =
-  glClearColor 0.5 0.5 0.5 0.0;
+  glClearColor 0.0 0.0 0.0 0.0;
   glShadeModel GL_FLAT;
+  
+  
+  glMaterial ~face:GL_FRONT ~mode:(Material.GL_SPECULAR(1.0, 1.0, 1.0, 1.0));
+  glMaterial ~face:GL_FRONT ~mode:(Material.GL_SHININESS(50.0));
+  
+  glLight ~light:(GL_LIGHT 0) ~pname:(Light.GL_POSITION(1.0, 1.0, 10.0, 0.0));
+
+  glEnable (GL_LIGHTING);
+  glEnable (GL_LIGHT0);
+  glEnable (GL_DEPTH_TEST);
 ;;
 
 let () =
   ignore(glutInit Sys.argv);
-  glutInitDisplayMode [GLUT_DOUBLE];
+  glutInitDisplayMode [GLUT_DOUBLE; GLUT_RGBA; GLUT_DEPTH];
   glutInitWindowSize 800 600;
   glutInitWindowPosition 100 100;
   ignore(glutCreateWindow ~title:Sys.argv.(0));
+  gl_init();
   glutSetCursor GLUT_CURSOR_NONE;
   glutDisplayFunc ~display;
   glutReshapeFunc ~reshape;
