@@ -78,12 +78,34 @@ let intersects p0 p1 p2 p3 =
 let foldPaper paper p0 p1 orientation = 
   let rec foldPaperRec points p0 p1 result =
     match points with
-      | [] -> Paper(result)
-      | a::t -> Paper(result)
+      | a::b::t -> 
+      begin
+        match intersects a b p0 p1 with
+          | None -> foldPaperRec (b::t) p0 p1 (a::result)
+          | Intersection(c) -> foldPaperRec (b::t) p0 p1 (a::c::result)
+      end
+      | _ -> Paper(List.rev result)
   in
     let Paper points = paper in
       foldPaperRec points p0 p1 []
 ;;
+
+let calcNormal p1x p1y p1z p2x p2y p2z p3x p3y p3z =
+  let ax = p2x -. p1x in
+  let ay = p2y -. p1y in
+  let az = p2z -. p1z in
+  let bx = p3x -. p1x in
+  let by = p3y -. p1y in
+  let bz = p3z -. p1z in
+
+  let nx = (ay *. bz) -. (az *. by) in
+  let ny = (az *. bx) -. (ax *. bz) in
+  let nz = (ax *. by) -. (ay *. bx) in
+
+  let l = sqrt(nx *. nx +. ny *. ny +. nz *. nz) in
+  (nx /. l, ny /. l, nz /. l)
+;;
+  
 
 (* Zwraca liste trojkatow dla danej, pozaginanej kartki papieru *)
 (* Kartka musi miec co najmniej 3 punkty *)
@@ -95,28 +117,35 @@ let paperTriangles paper =
   in
     let Paper points = paper in
     let fst, snd = List.hd points, List.hd (List.tl points) in
-      paperTrianglesRec (points @ [snd] @ [fst]) []
+      paperTrianglesRec (points @ [fst] @ [snd]) []
 
 let displayPaper paper =
   
   glBegin GL_TRIANGLES;
   let tri points = 
     let Point(ax, ay, _), Point(bx, by, _), Point(cx, cy, _) = points in
-      (* glColor3 0.5 (cx*.0.5+.0.5) (cy*.0.5+.0.5); *)
-      glColor3 0.5 0.5 0.5;
-      glNormal3 ~nx:0.0 ~ny:0.0 ~nz:(1.0);
-      glVertex2 ax ay;
-      glColor3 0.5 0.5 0.5;
-      (* glColor3 0.5 (bx*.0.5+.0.5) (by*.0.5+.0.5); *)
-      glNormal3 ~nx:0.0 ~ny:0.0 ~nz:(1.0);
+      let (nx, ny, nz) = calcNormal cx cy 0. bx by 0. ax ay 0. in
+        glNormal3 ~nx:nx ~ny:ny ~nz:nz;
+      
+      glVertex2 ax ay;      
+
       glVertex2 bx by;
-      glColor3 0.5 0.5 0.5;
-      (* glColor3 0.5 (ax*.0.5+.0.5) (ay*.0.5+.0.5); *)
-      glNormal3 ~nx:0.0 ~ny:0.0 ~nz:(1.0);
+
       glVertex2 cx cy;
+      
   in
     List.iter tri (paperTriangles paper);
-  glEnd()
+  glEnd();
+  let Paper points = paper in
+  let sph point =
+    glPushMatrix();
+    let Point(x,y,_) = point in
+    glTranslate ~x:x ~y:y ~z:0.0;
+    glutSolidSphere ~radius:0.05 ~slices:10 ~stacks:10;
+    glPopMatrix();
+  in
+    List.iter sph points;
+
 ;;
 
 let display() =
@@ -131,13 +160,13 @@ let display() =
     glRotate ~angle:(!anglex) ~x:0.0 ~y:1.0 ~z:0.0;  
     glRotate ~angle:(-. !angley) ~x:(1.0) ~y:0.0 ~z:0.0;
     displayPaper !paper;
-    
-    glFlush();
+
   end
   else
   begin
-    
     displayPaper !paper;
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
     if !lmousedown then
     begin
       glBegin GL_POINTS;
@@ -163,7 +192,8 @@ let display() =
       glVertex2 !mousex !mousey;
       glEnd();
     end;
-    
+    glEnable(GL_LIGHTING);
+    glEnable(GL_DEPTH_TEST);
   end;
   glFlush();
   glutSwapBuffers();
@@ -185,8 +215,8 @@ let motion ~x ~y =
   printf ("%f" ^^ " %f\n") !clickx !clicky;
   printf ("%f" ^^ " %f\n") !mousex !mousey;
   *)
-  anglex := -. (!mousex -. !clickx) *. 6.0;
-  angley := -. (!mousey -. !clicky) *. 6.0;
+  anglex := -. (!mousex -. !clickx) *. 10.0;
+  angley := -. (!mousey -. !clicky) *. 10.0;
 ;;
 
 (* passive mouse motion *)
@@ -251,11 +281,10 @@ let gl_init() =
   glClearColor 0.0 0.0 0.0 0.0;
   glShadeModel GL_FLAT;
   
-  
   glMaterial ~face:GL_FRONT ~mode:(Material.GL_SPECULAR(1.0, 1.0, 1.0, 1.0));
   glMaterial ~face:GL_FRONT ~mode:(Material.GL_SHININESS(50.0));
   
-  glLight ~light:(GL_LIGHT 0) ~pname:(Light.GL_POSITION(1.0, 1.0, 10.0, 0.0));
+  glLight ~light:(GL_LIGHT 0) ~pname:(Light.GL_POSITION(0.0, 0.0, 1.0, 0.0));
 
   glEnable (GL_LIGHTING);
   glEnable (GL_LIGHT0);
