@@ -6,6 +6,15 @@ module Geometry =
     type paper = Paper of point list ;;
     type intersection = None | Intersection of point;;
 
+    let blankPaper = 
+      Paper([
+        Point(-1.0, -1.0, Flat);
+        Point(-1.0, 1.0, Flat);
+        Point(1.0, 1.0, Flat);
+        Point(1.0, -1.0, Flat)
+      ])
+    ;;
+
     (* Iloczyn skalarny punktow a i b *)
     let dotProduct a b =
       let Point(ax, ay, _) = a in
@@ -59,6 +68,38 @@ module Geometry =
       let l = sqrt(nx *. nx +. ny *. ny +. nz *. nz) in
       (nx /. l, ny /. l, nz /. l)
     ;;
+
+
+    (* Wez kartke papieru 'paper' oraz wspolrzedne odcinka p0, p1 i zwroc nowa,
+       zagieta kartke papieru *)
+    let foldPaper paper p0 p1 orientation = 
+      let rec foldPaperRec points p0 p1 result =
+        match points with
+          | a::b::t -> 
+          begin
+            match intersects a b p0 p1 with
+              | None -> foldPaperRec (b::t) p0 p1 (a::result)
+              | Intersection(c) -> foldPaperRec (b::t) p0 p1 (a::c::result)
+          end
+          | _ -> Paper(List.rev result)
+      in
+        let Paper points = paper in
+        let fst, snd = List.hd points, List.hd (List.tl points) in
+          foldPaperRec (points @ [fst] @ [snd]) p0 p1 []
+    ;;
+
+    (* Zwraca liste trojkatow dla danej, pozaginanej kartki papieru *)
+    (* Kartka musi miec co najmniej 3 punkty *)
+    let paperTriangles paper =
+      let rec paperTrianglesRec points result =
+        match points with
+          | a::b::c::t -> paperTrianglesRec (b::c::t) ((a, b, c) :: result)
+          | _ -> result
+      in
+        let Paper points = paper in
+        let fst, snd = List.hd points, List.hd (List.tl points) in
+          paperTrianglesRec (points @ [fst] @ [snd]) []
+      ;;
 
   end
 ;;

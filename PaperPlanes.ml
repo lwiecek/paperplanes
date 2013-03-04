@@ -4,15 +4,6 @@ open Glut
 open Printf
 open Geometry
 
-let blankPaper = 
-  Geometry.Paper([
-    Geometry.Point(-1.0, -1.0, Geometry.Flat);
-    Geometry.Point(-1.0, 1.0, Geometry.Flat);
-    Geometry.Point(1.0, 1.0, Geometry.Flat);
-    Geometry.Point(1.0, -1.0, Geometry.Flat)
-  ])
-;;
-
 (* Polozenie myszy na ekranie *)
 let mousex = ref 0.0
 let mousey = ref 0.0
@@ -47,41 +38,8 @@ let angley = ref 0.0
 let anglex = ref 0.0
 
 (* Zacznij z czysta kartka papieru, kwadratem 1x1 *)
-let paper = ref blankPaper
-
+let paper = ref Geometry.blankPaper
 ;;
-  
-
-(* Wez kartke papieru 'paper' oraz wspolrzedne odcinka p0, p1 i zwroc nowa,
-   zagieta kartke papieru *)
-let foldPaper paper p0 p1 orientation = 
-  let rec foldPaperRec points p0 p1 result =
-    match points with
-      | a::b::t -> 
-      begin
-        match Geometry.intersects a b p0 p1 with
-          | Geometry.None -> foldPaperRec (b::t) p0 p1 (a::result)
-          | Geometry.Intersection(c) -> foldPaperRec (b::t) p0 p1 (a::c::result)
-      end
-      | _ -> Geometry.Paper(List.rev result)
-  in
-    let Geometry.Paper points = paper in
-    let fst, snd = List.hd points, List.hd (List.tl points) in
-      foldPaperRec (points @ [fst] @ [snd]) p0 p1 []
-;;
-
-
-(* Zwraca liste trojkatow dla danej, pozaginanej kartki papieru *)
-(* Kartka musi miec co najmniej 3 punkty *)
-let paperTriangles paper =
-  let rec paperTrianglesRec points result =
-    match points with
-      | a::b::c::t -> paperTrianglesRec (b::c::t) ((a, b, c) :: result)
-      | _ -> result
-  in
-    let Geometry.Paper points = paper in
-    let fst, snd = List.hd points, List.hd (List.tl points) in
-      paperTrianglesRec (points @ [fst] @ [snd]) []
 
 let displayPaper paper =
   
@@ -94,14 +52,12 @@ let displayPaper paper =
       let (nx, ny, nz) = Geometry.calcNormal cx cy 0. bx by 0. ax ay 0. in
         glNormal3 ~nx:nx ~ny:ny ~nz:nz;
       
-      glVertex2 ax ay;      
-
+      glVertex2 ax ay;
       glVertex2 bx by;
-
       glVertex2 cx cy;
       
   in
-    List.iter tri (paperTriangles paper);
+    List.iter tri (Geometry.paperTriangles paper);
   glEnd();
   let Geometry.Paper points = paper in
   let sph point =
@@ -205,7 +161,7 @@ let mouse ~button ~state ~x ~y =
       lmousedown := false;
       let p0, p1 = Geometry.Point(!clickx, !clicky, Geometry.Top),
                    Geometry.Point(!mousex, !mousey, Geometry.Top) in
-        paper := foldPaper (!paper) p0 p1 Geometry.Top;
+        paper := Geometry.foldPaper (!paper) p0 p1 Geometry.Top;
   | GLUT_RIGHT_BUTTON, GLUT_DOWN ->
       rmousedown := true;
       let mx, my, _ = gluUnProjectUtil ~x ~y in
