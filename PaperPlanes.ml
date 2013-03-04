@@ -181,7 +181,7 @@ let motion ~x ~y =
   (*
   printf ("%f" ^^ " %f\n") !clickx !clicky;
   printf ("%f" ^^ " %f\n") !mousex !mousey;
-  *)
+  *) 
   anglex := -. (!mousex -. !clickx) *. 10.0;
   angley := -. (!mousey -. !clicky) *. 10.0;
 ;;

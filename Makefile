@@ -1,7 +1,7 @@
 OCAMLC=/opt/local/bin/ocamlc
 OCAMLOPT=/opt/local/bin/ocamlopt
 OCAMLDEP=/opt/local/bin/ocamldep
-INCLUDES=-I +glMLite /opt/local/lib/ocaml/glMLite/dllgl_stubs.so GL.cma Glu.cma Glut.cma                 # all relevant -I options here
+INCLUDES=-I +glMLite GL.cma Glu.cma Glut.cma # all relevant -I options here
 OCAMLFLAGS=$(INCLUDES)    # add other options for ocamlc here
 OCAMLOPTFLAGS=$(INCLUDES) # add other options for ocamlopt here
 LD_LIBRARY_PATH=/opt/local/lib/ocaml/glMLite/
