@@ -37,6 +37,9 @@ let shift_key = ref false
 let angley = ref 0.0
 let anglex = ref 0.0
 
+(* Jak wysoko nalezy zaginac papier? *)
+let level = ref 0
+
 (* Zacznij z czysta kartka papieru, kwadratem 1x1 *)
 let paper = ref Geometry.blankPaper
 ;;
@@ -159,9 +162,10 @@ let mouse ~button ~state ~x ~y =
         clicky := my;
   | GLUT_LEFT_BUTTON, GLUT_UP -> 
       lmousedown := false;
-      let p0, p1 = Geometry.Point(!clickx, !clicky, Geometry.Top),
-                   Geometry.Point(!mousex, !mousey, Geometry.Top) in
-        paper := Geometry.foldPaper (!paper) p0 p1 Geometry.Top;
+      let p0, p1 = Geometry.Point(!clickx, !clicky, 0),
+                   Geometry.Point(!mousex, !mousey, 0) in
+        level := !level + 1;
+        paper := Geometry.foldPaper (!paper) p0 p1;
   | GLUT_RIGHT_BUTTON, GLUT_DOWN ->
       rmousedown := true;
       let mx, my, _ = gluUnProjectUtil ~x ~y in
@@ -220,7 +224,7 @@ let () =
   glutInitDisplayMode [GLUT_DOUBLE; GLUT_RGBA; GLUT_DEPTH];
   glutInitWindowSize 800 600;
   glutInitWindowPosition 100 100;
-  ignore(glutCreateWindow ~title:Sys.argv.(0));
+  ignore(glutCreateWindow ~title:"Paper Planes");
   gl_init();
   glutSetCursor GLUT_CURSOR_NONE;
   glutDisplayFunc ~display;
