@@ -1,4 +1,6 @@
+open Printf
 module Geometry =
+  
   struct
 
     (* type orientation = Top | Flat | Bottom ;; *)
@@ -128,17 +130,50 @@ module Geometry =
     (* Zwraca liste trojkatow dla danej, pozaginanej kartki papieru *)
     (* Kartka musi miec co najmniej 3 punkty *)
     let paperTriangles paper =
-      let rec paperTrianglesRec a points result level =
+      (* Zwraca liste punktow podzielona na obszary o wspolnym poziomie *)
+      (*
+      let rec levels points level result =
+
+        match points with
+          | a::b::t -> 
+            let Point(ax, ay, alev) = a in
+            let Point(bx, by, blev) = b in
+              if blev > level then
+                let (r, ps) = levels (b::points) blev [a] in
+                levels ps level r 
+              else
+              if alev < level then
+                (a::result, points)
+              else
+                levels (b::points) level result @ [a]
+
+          | [] -> result
+      *)
+      let rec paperTrianglesRec stack points result level =
         match points with
           | b::c::t -> 
             let Point(cx, cy, clev) = c in
+            let Point(bx, by, blev) = b in
+            if clev > level then begin              
+              
+              let s, ps, r = (paperTrianglesRec (b::stack) (c::t) (result) clev) in
+                paperTrianglesRec s ps (r @ result) level
+            end else if blev < level then begin              
+              (List.tl stack, (b::c::t), result)
+              (* paperTrianglesRec (List.tl stack) (b::c::t) (result) blev *)
+            end else
               (* if clev > level then
-                paperTrianglesRec c *)
-            paperTrianglesRec a (c::t) ((a, b, c) :: result) level
-          | _ -> result
+                paperTrianglesRec c 
+              let Point(cx, cy, clev) = c in
+              if clev > level then
+                paperTrianglesRec stack (c::t) (result) level
+              else *)
+                paperTrianglesRec stack (c::t) ((List.hd stack, b, c) :: result) level
+          | _ -> ([], [], result)
       in
         let Paper points = paper in    
-        paperTrianglesRec (List.hd points) (List.tl points) [] 0
+        let (_, _, r) = paperTrianglesRec [List.hd points] (List.tl points) [] 0 in
+        r
       ;;
 
   end

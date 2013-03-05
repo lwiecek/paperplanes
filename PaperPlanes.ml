@@ -49,15 +49,15 @@ let displayPaper paper =
   glBegin GL_TRIANGLES;
   let tri points = 
     let
-      Geometry.Point(ax, ay, _),
-      Geometry.Point(bx, by, _), 
-      Geometry.Point(cx, cy, _) = points in
-      let (nx, ny, nz) = Geometry.calcNormal cx cy 0. bx by 0. ax ay 0. in
-        glNormal3 ~nx:nx ~ny:ny ~nz:nz;
-      
-      glVertex2 ax ay;
-      glVertex2 bx by;
-      glVertex2 cx cy;
+      Geometry.Point(ax, ay, az),
+      Geometry.Point(bx, by, bz), 
+      Geometry.Point(cx, cy, cz) = points in
+      (* let (nx, ny, nz) = Geometry.calcNormal cx cy (float_of_int(cz)*.0.2) bx by (float_of_int(bz)*.0.2) ax ay (float_of_int(az)*.0.2) in
+        glNormal3 ~nx:nx ~ny:ny ~nz:nz; *)
+      glVertex3 ~x:ax ~y:ay ~z:(float_of_int(az)*.0.2);
+      glVertex3 ~x:bx ~y:by ~z:(float_of_int(bz)*.0.2);
+      glVertex3 ~x:cx ~y:cy ~z:(float_of_int(cz)*.0.2);
+
       
   in
     List.iter tri (Geometry.paperTriangles paper);
@@ -65,8 +65,9 @@ let displayPaper paper =
   let Geometry.Paper points = paper in
   let sph point =
     glPushMatrix();
-    let Geometry.Point(x,y,_) = point in
-    glTranslate ~x:x ~y:y ~z:0.0;
+    let Geometry.Point(x,y,z) = point in
+    glTranslate ~x:x ~y:y ~z:(float_of_int(z)*.0.2);
+
     glutSolidSphere ~radius:0.05 ~slices:10 ~stacks:10;
     glPopMatrix();
   in
@@ -214,9 +215,11 @@ let gl_init() =
   
   glLight ~light:(GL_LIGHT 0) ~pname:(Light.GL_POSITION(0.0, 0.0, 1.0, 0.0));
 
+  glLightModel ~light_model:(GL_LIGHT_MODEL_TWO_SIDE true);
   glEnable (GL_LIGHTING);
   glEnable (GL_LIGHT0);
   glEnable (GL_DEPTH_TEST);
+  glColor3 0.5 0.5 0.5;
 ;;
 
 let () =
